@@ -76,10 +76,13 @@ __device__ void extract_domain(cudf::string_view* out, cuda::std::optional<cudf:
         *out = url;
         return;
     }
-    while (pos < static_cast<int32_t>(len) && url[pos] != '/') {
-        ++pos;
+    auto slash_pos = url.find('/', pos);
+    if (slash_pos == cudf::string_view::npos) {
+        *out = url;
+        return;
     }
-    g1_end = pos;
+    g1_end = static_cast<int32_t>(slash_pos);
+    pos = static_cast<int32_t>(slash_pos);
     // Literal "/"
     if (!(len - pos >= 1 && 
           url[pos + 0] == '/'))
@@ -89,8 +92,11 @@ __device__ void extract_domain(cudf::string_view* out, cuda::std::optional<cudf:
     }
     pos += 1;
     // Quantifier *
-    while (pos < static_cast<int32_t>(len) && url[pos] != '\n') {
-        ++pos;
+    auto newline_pos = url.find('\n', pos);
+    if (newline_pos != cudf::string_view::npos) {
+        pos = static_cast<int32_t>(newline_pos);
+    } else {
+        pos = static_cast<int32_t>(len);
     }
     // $ end anchor
     if (pos != static_cast<int32_t>(len))
