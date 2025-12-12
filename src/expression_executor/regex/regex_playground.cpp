@@ -71,18 +71,18 @@ __device__ void extract_domain(cudf::string_view* out, cuda::std::optional<cudf:
     // Capturing group 1
     g1_start = pos;
     // Quantifier +
-    if (pos >= static_cast<int32_t>(len) || url[pos] == '/')
+    auto stop_pos = url.find('/', pos);
+    if (pos >= static_cast<int32_t>(len) || stop_pos == pos)
     {
         *out = url;
         return;
     }
-    auto slash_pos = url.find('/', pos);
-    if (slash_pos == cudf::string_view::npos) {
-        *out = url;
-        return;
+    if (stop_pos == cudf::string_view::npos) {
+        pos = static_cast<int32_t>(len);
+    } else {
+        pos = static_cast<int32_t>(stop_pos);
     }
-    g1_end = static_cast<int32_t>(slash_pos);
-    pos = static_cast<int32_t>(slash_pos);
+    g1_end = pos;
     // Literal "/"
     if (!(len - pos >= 1 && 
           url[pos + 0] == '/'))
@@ -93,10 +93,10 @@ __device__ void extract_domain(cudf::string_view* out, cuda::std::optional<cudf:
     pos += 1;
     // Quantifier *
     auto newline_pos = url.find('\n', pos);
-    if (newline_pos != cudf::string_view::npos) {
-        pos = static_cast<int32_t>(newline_pos);
-    } else {
+    if (newline_pos == cudf::string_view::npos) {
         pos = static_cast<int32_t>(len);
+    } else {
+        pos = static_cast<int32_t>(newline_pos);
     }
     // $ end anchor
     if (pos != static_cast<int32_t>(len))
