@@ -14,25 +14,39 @@
  * limitations under the License.
  */
 
-#include "expression_executor/regex/regex_playground.hpp"
-#include "expression_executor/regex/regex_interpreter.hpp"
+#pragma once
 
-#include <optional>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
 namespace sirius {
 namespace expression {
 
-std::unique_ptr<cudf::column>
-regex_playground::jit_transform_clickbench_q28_regex(const cudf::column_view& input) {
-    auto& cache = RegexUdfCache::Instance();
-    const auto& udf = cache.GetOrCreate("(^https?://(?:www\\.)?([^/]+)/.*$)", "(\\1)");
-    return cudf::transform({input},
-                           udf.source,
-                           cudf::data_type{cudf::type_id::STRING},
-                           false,
-                           std::nullopt,
-                           cudf::null_aware::YES);
-}
+struct RegexUdf {
+  std::string function_name;
+  std::string source;
+};
+
+class RegexInterpreter {
+public:
+  RegexUdf Generate(std::string pattern, std::string replacement) const;
+};
+
+class RegexUdfCache {
+public:
+  static RegexUdfCache& Instance();
+
+  const RegexUdf& GetOrCreate(const std::string& pattern, const std::string& replacement);
+
+private:
+  RegexUdfCache() = default;
+
+private:
+  std::mutex mutex_;
+  std::unordered_map<std::string, RegexUdf> cache_;
+  RegexInterpreter interpreter_;
+};
 
 } // namespace expression
 } // namespace sirius
